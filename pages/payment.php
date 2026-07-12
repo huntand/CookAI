@@ -158,7 +158,8 @@ $sub = db_one(
                     <input type="checkbox" x-model="autoRenew" class="mt-0.5 w-5 h-5 rounded accent-violet-500 shrink-0">
                     <span class="text-sm text-gray-600">
                         Включить <b>автопродление</b>. Спишем оплату по той же карте в конце периода.
-                        Мы предупредим письмом за <?= RENEW_NOTIFY_DAYS ?> дня. Отменить можно в любой момент в разделе «Платежи».
+                        Мы предупредим письмом за <?= RENEW_NOTIFY_DAYS ?> дня перед списанием.
+                        Отменить можно в любой момент в разделе «Платежи».
                     </span>
                 </label>
 
@@ -172,7 +173,7 @@ $sub = db_one(
                 <!-- Правовые примечания -->
                 <p class="text-xs text-gray-400 text-center mt-3">
                     Оплата через защищённый шлюз ЮKassa. Нажимая «Оплатить», вы соглашаетесь
-                    с <a href="<?= url('terms') ?>" target="_blank" class="underline hover:text-gray-600">условиями</a><span x-show="autoRenew" style="display:none"> и рекуррентными списаниями до отмены</span>.
+                    с <a href="<?= url('terms') ?>" target="_blank" class="underline hover:text-gray-600">условиями</a><span x-show="autoRenew" style="display:none"> и рекуррентным платежом</span>.
                 </p>
                 <?php if (!PAYMENT_LIVE_MODE): ?>
                     <p class="text-xs text-amber-500 text-center mt-2">

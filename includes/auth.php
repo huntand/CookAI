@@ -91,9 +91,36 @@ function check_subscription(?string $email = null): bool
         default  => false,
     };
 }
+
+/**
+ * Проверка прав администратора.
+ * ВАЖНО: admin_emails загружается из переменной окружения или конфига,
+ * а НЕ захардкодируется в коде!
+ */
 function is_admin(): bool
 {
     $u = current_user();
-    return $u && in_array(mb_strtolower($u['email']), ['demo@cookai.ru'], true); // задайте свои admin-email
+    if (!$u) return false;
+
+    // Получаем список admin-email из переменной окружения или конфига
+    $admin_emails = [];
+    if (defined('ADMIN_EMAILS') && is_array(ADMIN_EMAILS)) {
+        $admin_emails = ADMIN_EMAILS;
+    } elseif (getenv('ADMIN_EMAILS')) {
+        $admin_emails = array_map('trim', explode(',', getenv('ADMIN_EMAILS')));
+    }
+
+    return in_array(mb_strtolower($u['email']), array_map('mb_strtolower', $admin_emails), true);
 }
-function require_admin(): void { require_login(); if (!is_admin()) { http_response_code(403); die('Доступ запрещён'); } }
+
+/**
+ * Проверка администратора с редиректом при отсутствии прав.
+ */
+function require_admin(): void
+{
+    require_login();
+    if (!is_admin()) {
+        http_response_code(403);
+        die('Доступ запрещён');
+    }
+}
