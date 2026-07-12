@@ -1,0 +1,166 @@
+# ============================================================
+#  CookAI — конфигурация Apache (mod_rewrite)
+# ============================================================
+
+# --- Базовые настройки ---
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Если проект в подпапке — раскомментируйте и укажите путь:
+    # RewriteBase /
+
+    # --- Принудительный HTTPS (нужно для платежей/webhook) ---
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # --- Не переписываем реально существующие файлы и папки ---
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # ========================================================
+    #  API (JSON-эндпоинты) — отдаём как есть по прямому пути
+    # ========================================================
+    # Все /api/*.php обрабатываются напрямую (условие -f выше их пропускает),
+    # поэтому здесь дополнительные правила не нужны.
+
+    # ========================================================
+    #  КРОНЫ (защищены токеном внутри скриптов)
+    # ========================================================
+    RewriteRule ^cron/([a-z_]+)/?$              cron/$1.php                [L,QSA]
+
+    # ========================================================
+    #  ДИНАМИЧЕСКИЕ СТРАНИЦЫ со slug/id
+    # ========================================================
+    RewriteRule ^recipe/([a-zA-Z0-9\-]+)/?$      pages/recipe_detail.php?slug=$1    [L,QSA]
+    RewriteRule ^community/([a-zA-Z0-9\-]+)/?$    pages/community_detail.php?slug=$1 [L,QSA]
+    RewriteRule ^challenge/([a-zA-Z0-9\-]+)/?$    pages/challenge_detail.php?slug=$1 [L,QSA]
+    RewriteRule ^user/([a-zA-Z0-9\-_.]+)/?$       pages/profile.php?user=$1          [L,QSA]
+
+    # ========================================================
+    #  СТАТИЧЕСКИЕ СТРАНИЦЫ
+    # ========================================================
+    RewriteRule ^$                               pages/home.php          [L,QSA]
+    RewriteRule ^home/?$                         pages/home.php          [L,QSA]
+
+    # --- Аутентификация ---
+    RewriteRule ^login/?$                        pages/login.php         [L,QSA]
+    RewriteRule ^register/?$                     pages/register.php      [L,QSA]
+    RewriteRule ^logout/?$                       pages/logout.php        [L,QSA]
+
+    # --- AI-инструменты (имена URL из header.php) ---
+    RewriteRule ^ai-generator/?$                 pages/ai_generator.php          [L,QSA]
+    RewriteRule ^what-to-cook/?$                 pages/what_to_cook.php          [L,QSA]
+    RewriteRule ^advisor/?$                      pages/culinary_advisor.php      [L,QSA]
+    RewriteRule ^ai-cookbook/?$                  pages/ai_cookbook_generator.php [L,QSA]
+    RewriteRule ^calorie-scanner/?$              pages/calorie_scanner.php       [L,QSA]
+    RewriteRule ^scanner/?$                      pages/calorie_scanner.php       [L,QSA]
+
+    # --- Рецепты ---
+    RewriteRule ^create-recipe/?$                pages/create_recipe.php  [L,QSA]
+    RewriteRule ^search/?$                       pages/search.php         [L,QSA]
+    RewriteRule ^inspiration/?$                  pages/inspiration.php    [L,QSA]
+    RewriteRule ^favorites/?$                    pages/saved_recipes.php  [L,QSA]
+    RewriteRule ^my-cookbooks/?$                 pages/my_cookbooks.php   [L,QSA]
+
+    # --- Сообщество ---
+    RewriteRule ^communities/?$                  pages/communities.php    [L,QSA]
+    RewriteRule ^challenges/?$                   pages/challenges.php     [L,QSA]
+    RewriteRule ^leaderboard/?$                  pages/leaderboard.php    [L,QSA]
+    RewriteRule ^friends/?$                      pages/friends.php        [L,QSA]
+    RewriteRule ^chats/?$                        pages/chats.php          [L,QSA]
+
+    # --- Профиль ---
+    RewriteRule ^profile/?$                      pages/profile.php        [L,QSA]
+
+    # --- Дневник / планировщик ---
+    RewriteRule ^food-diary/?$                   pages/food_diary.php     [L,QSA]
+    RewriteRule ^diary/?$                         pages/food_diary.php     [L,QSA]
+    RewriteRule ^meal-planner/?$                 pages/meal_planner.php   [L,QSA]
+
+    # --- Подписка / платежи ---
+    RewriteRule ^payment/?$                      pages/payment.php        [L,QSA]
+    RewriteRule ^billing/?$                      pages/billing_history.php [L,QSA]
+    RewriteRule ^terms/?$                        pages/terms.php          [L,QSA]
+    RewriteRule ^admin/?$                        pages/admin_panel.php    [L,QSA]
+
+    # --- 404 на всё остальное ---
+    RewriteRule ^ pages/404.php [L]
+</IfModule>
+
+# ============================================================
+#  БЕЗОПАСНОСТЬ
+# ============================================================
+
+# --- Запрет доступа к служебным файлам и папкам ---
+<FilesMatch "^\.(htaccess|env|git)">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sql|log|md|json|lock|ini)$">
+    Require all denied
+</FilesMatch>
+
+# --- Закрываем конфиги и includes от прямого доступа ---
+RedirectMatch 403 ^/config/.*$
+RedirectMatch 403 ^/includes/.*$
+RedirectMatch 403 ^/database/.*$
+RedirectMatch 403 ^/logs/.*$
+
+# --- Защитные заголовки ---
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-XSS-Protection "1; mode=block"
+    # Разрешаем ЮKassa (виджет/редирект) и CDN
+    Header set Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+</IfModule>
+
+# ============================================================
+#  ПРОИЗВОДИТЕЛЬНОСТЬ
+# ============================================================
+
+# --- Сжатие ---
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# --- Кэширование статики ---
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                "access plus 7 days"
+    ExpiresByType application/javascript  "access plus 7 days"
+    ExpiresByType image/jpeg              "access plus 30 days"
+    ExpiresByType image/png               "access plus 30 days"
+    ExpiresByType image/webp              "access plus 30 days"
+    ExpiresByType image/svg+xml           "access plus 30 days"
+    ExpiresByType font/woff2              "access plus 30 days"
+</IfModule>
+
+# --- Не кэшировать PDF-квитанции (персональные данные) ---
+<FilesMatch "receipt\.php$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "private, no-store, no-cache, must-revalidate"
+    </IfModule>
+</FilesMatch>
+
+# ============================================================
+#  ЗАГРУЗКА ФАЙЛОВ (для vision-сканера)
+# ============================================================
+<IfModule mod_php.c>
+    php_value upload_max_filesize 6M
+    php_value post_max_size 8M
+    php_value max_execution_time 120
+    php_value memory_limit 256M
+</IfModule>
+
+# --- Кастомные страницы ошибок ---
+ErrorDocument 403 /pages/403.php
+ErrorDocument 404 /pages/404.php
+ErrorDocument 500 /pages/500.php
