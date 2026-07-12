@@ -8,6 +8,22 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/yookassa.php';
 require_once __DIR__ . '/../includes/promo.php';
 
+/**
+ * Валидирует формат payment_id (должен быть UUID или цифровой ID)
+ */
+function validate_payment_id(string $paymentId): bool
+{
+    // UUID формат (e.g., 550e8400-e29b-41d4-a716-446655440000)
+    if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $paymentId)) {
+        return true;
+    }
+    // Цифровой ID
+    if (preg_match('/^\d+$/', $paymentId)) {
+        return true;
+    }
+    return false;
+}
+
 $raw   = file_get_contents('php://input');
 $event = json_decode($raw, true) ?: [];
 $type  = $event['event'] ?? '';
@@ -18,6 +34,14 @@ try {
     if ($type === 'refund.succeeded') {
         $paymentId = $obj['payment_id'] ?? '';
         $amount    = (float)($obj['amount']['value'] ?? 0);
+
+        // Валидация payment_id
+        if (!$paymentId || !validate_payment_id($paymentId)) {
+            http_response_code(400);
+            echo 'invalid payment_id';
+            exit;
+        }
+
         if ($paymentId) {
             $sub = db_one('SELECT id, user_email FROM subscriptions WHERE payment_id=?', [$paymentId]);
             if ($sub) {
@@ -35,12 +59,18 @@ try {
                 );
             }
         }
-        http_response_code(200); echo 'refund ok'; exit;
+        http_response_code(200);
+        echo 'refund ok';
+        exit;
     }
 
     // ---------- ПЛАТЁЖ ----------
     $payId = $obj['id'] ?? '';
-    if ($payId === '') { http_response_code(400); echo 'no id'; exit; }
+    if ($payId === '' || !validate_payment_id($payId)) {
+        http_response_code(400);
+        echo 'invalid id';
+        exit;
+    }
 
     $payment = yookassa_get_payment($payId);
     $status  = $payment['status'] ?? '';
@@ -49,12 +79,28 @@ try {
     $months  = max(1, (int)($meta['months'] ?? 1));
     $email   = (string)($meta['email'] ?? '');
 
-    if (($meta['recurring'] ?? '0') === '1') { http_response_code(200); echo 'recurring handled by cron'; exit; }
-    if ($localId <= 0) { http_response_code(200); echo 'ignored'; exit; }
+    if (($meta['recurring'] ?? '0') === '1') {
+        http_response_code(200);
+        echo 'recurring handled by cron';
+        exit;
+    }
+    if ($localId <= 0) {
+        http_response_code(200);
+        echo 'ignored';
+        exit;
+    }
 
     $sub = db_one('SELECT id, status, promo_code FROM subscriptions WHERE id=?', [$localId]);
-    if (!$sub) { http_response_code(200); echo 'unknown'; exit; }
-    if ($sub['status'] === 'active') { http_response_code(200); echo 'already active'; exit; }
+    if (!$sub) {
+        http_response_code(200);
+        echo 'unknown';
+        exit;
+    }
+    if ($sub['status'] === 'active') {
+        http_response_code(200);
+        echo 'already active';
+        exit;
+    }
 
     if ($status === 'succeeded') {
         $pmId = null;
@@ -98,8 +144,10 @@ try {
         db_exec('UPDATE subscriptions SET status=? WHERE id=?', ['canceled', $localId]);
     }
 
-    http_response_code(200); echo 'ok';
+    http_response_code(200);
+    echo 'ok';
 } catch (Throwable $ex) {
     error_log('[CookAI webhook] ' . $ex->getMessage());
-    http_response_code(200); echo 'error logged';
+    http_response_code(200);
+    echo 'error logged';
 }
