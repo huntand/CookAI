@@ -2,6 +2,9 @@
 /**
  * CookAI — центральная конфигурация и bootstrap.
  * Подключается ПЕРВЫМ в каждом entry-point (pages/*, api/*, cron/*).
+ * 
+ * ВАЖНО: Учётные данные загружаются из переменных окружения (.env),
+ * а НЕ из исходного кода!
  */
 declare(strict_types=1);
 
@@ -9,8 +12,8 @@ declare(strict_types=1);
 //  РЕЖИМ И ОКРУЖЕНИЕ
 // ============================================================
 define('APP_NAME', 'CookAI');
-define('APP_DEBUG', false);
-define('APP_ENV', 'production');
+define('APP_DEBUG', (bool)(getenv('APP_DEBUG') === 'true'));
+define('APP_ENV', getenv('APP_ENV') ?: 'production');
 define('APP_TIMEZONE', 'Europe/Moscow');
 
 date_default_timezone_set(APP_TIMEZONE);
@@ -29,32 +32,35 @@ if (APP_DEBUG) {
 // ============================================================
 //  РЕЖИМ ОБСЛУЖИВАНИЯ (maintenance)
 // ============================================================
-define('MAINTENANCE_MODE', false);              // true — включить техработы (503)
-define('MAINTENANCE_RETRY_AFTER', 3600);         // Retry-After в секундах
-define('MAINTENANCE_ALLOWED_IPS', [
-    // '203.0.113.10',                            // IP админов/разработчиков
-]);
-define('MAINTENANCE_MESSAGE', 'Мы обновляем кухню и скоро вернёмся с новыми возможностями!');
+define('MAINTENANCE_MODE', (bool)(getenv('MAINTENANCE_MODE') === 'true'));
+define('MAINTENANCE_RETRY_AFTER', (int)(getenv('MAINTENANCE_RETRY_AFTER') ?: 3600));
+define('MAINTENANCE_ALLOWED_IPS', array_filter(explode(',', getenv('MAINTENANCE_ALLOWED_IPS') ?: '')));
+define('MAINTENANCE_MESSAGE', getenv('MAINTENANCE_MESSAGE') ?: 'Мы обновляем кухню и скоро вернёмся с новыми возможностями!');
 
 // --- Плановые техработы (мягкое предупреждение баннером) ---
-define('MAINTENANCE_SCHEDULED_AT', null);        // напр. '2026-07-08 03:00' или null
-define('MAINTENANCE_NOTICE_MINUTES', 30);        // за сколько минут показывать баннер
-define('MAINTENANCE_DURATION_MINUTES', 15);      // ожидаемая длительность работ
+define('MAINTENANCE_SCHEDULED_AT', getenv('MAINTENANCE_SCHEDULED_AT') ?: null);
+define('MAINTENANCE_NOTICE_MINUTES', (int)(getenv('MAINTENANCE_NOTICE_MINUTES') ?: 30));
+define('MAINTENANCE_DURATION_MINUTES', (int)(getenv('MAINTENANCE_DURATION_MINUTES') ?: 15));
 
 // ============================================================
-//  БАЗА ДАННЫХ
+//  БАЗА ДАННЫХ (из переменных окружения)
 // ============================================================
-define('DB_HOST', '188.127.239.143');
-define('DB_PORT', '3306');
-define('DB_NAME', 'exolyt-ai-975');
-define('DB_USER', 'exolyt-ai-975');
-define('DB_PASS', '01689075');
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
+define('DB_NAME', getenv('DB_NAME'));
+define('DB_USER', getenv('DB_USER'));
+define('DB_PASS', getenv('DB_PASS'));
+
+if (!DB_NAME || !DB_USER) {
+    die('ERROR: Database credentials not configured. Set DB_NAME, DB_USER, DB_PASS in environment.');
+}
 
 // ============================================================
 //  БАЗОВЫЙ URL / ПУТИ
 // ============================================================
-define('SITE_URL', 'https://s1647298.smrtp.ru');
-define('BASE_PATH', '');
+define('SITE_URL', getenv('SITE_URL') ?: 'http://localhost');
+define('BASE_PATH', getenv('BASE_PATH') ?: '');
+define('BASE_URL', rtrim(SITE_URL, '/') . BASE_PATH);
 define('ROOT_DIR', dirname(__DIR__));
 define('UPLOADS_DIR', ROOT_DIR . '/uploads');
 
@@ -62,7 +68,11 @@ define('UPLOADS_DIR', ROOT_DIR . '/uploads');
 //  СЕССИИ / БЕЗОПАСНОСТЬ
 // ============================================================
 define('SESSION_NAME', 'cookai_sess');
-define('CRON_SECRET', 'ВСТАВЬТЕ_РЕЗУЛЬТАТ_bin2hex_random_bytes_32');
+define('CRON_SECRET', getenv('CRON_SECRET') ?: '');
+
+if (!CRON_SECRET) {
+    error_log('WARNING: CRON_SECRET not set. Cron endpoints will be vulnerable!');
+}
 
 if (session_status() === PHP_SESSION_NONE) {
     $__sessDir = ROOT_DIR . '/logs/sessions';
@@ -73,7 +83,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_name(SESSION_NAME);
     session_set_cookie_params([
         'lifetime' => 0,
-        'path'     => '/',
+        'path'     => BASE_PATH ?: '/',
         'secure'   => (($_SERVER['HTTPS'] ?? '') === 'on')
                       || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'),
         'httponly' => true,
@@ -83,15 +93,19 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ============================================================
-//  YANDEX AI
+//  YANDEX AI (из переменных окружения)
 // ============================================================
-define('YANDEX_API_KEY', 'AQVNxWarDG2MFTKKtfmBEkZ40ay_pjFLVT1Kq1yq');
-define('YANDEX_FOLDER_ID', 'b1ge0sjhm88rvdjcgrvj');
+define('YANDEX_API_KEY', getenv('YANDEX_API_KEY') ?: '');
+define('YANDEX_FOLDER_ID', getenv('YANDEX_FOLDER_ID') ?: '');
 define('YANDEX_COMPLETION_URL', 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion');
 define('YANDEX_GPT_MODEL', 'gpt://' . YANDEX_FOLDER_ID . '/yandexgpt/latest');
 define('YANDEX_VISION_MODEL', 'gpt://' . YANDEX_FOLDER_ID . '/yandex-gpt-vision/latest');
 define('YANDEX_ART_URL', 'https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync');
 define('YANDEX_ART_MODEL', 'art://' . YANDEX_FOLDER_ID . '/yandex-art/latest');
+
+if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
+    error_log('WARNING: Yandex AI credentials not configured. Set YANDEX_API_KEY, YANDEX_FOLDER_ID.');
+}
 
 define('MAX_IMAGE_SIZE', 5 * 1024 * 1024);
 define('ALLOWED_IMAGE_TYPES', 'image/jpeg,image/png,image/webp');
@@ -99,7 +113,6 @@ define('ALLOWED_IMAGE_TYPES', 'image/jpeg,image/png,image/webp');
 // --- AI rate-limit (дневные лимиты по фичам) ---
 define('AI_LIMIT_GUEST', 2);
 define('AI_LIMIT_PRO', 40);
-// Централизованная таблица лимитов: feature => [guest, pro]
 define('AI_LIMITS', [
     'generate' => [AI_LIMIT_GUEST, AI_LIMIT_PRO],
     'calorie'  => [2, AI_LIMIT_PRO],
@@ -107,32 +120,42 @@ define('AI_LIMITS', [
 ]);
 
 // ============================================================
-//  ПЛАТЕЖИ (ЮKassa)
+//  ПЛАТЕЖИ (ЮKassa) (из переменных окружения)
 // ============================================================
-define('YOOKASSA_SHOP_ID', 'ВАШ_SHOP_ID');
-define('YOOKASSA_SECRET_KEY', 'ВАШ_СЕКРЕТНЫЙ_КЛЮЧ');
+define('YOOKASSA_SHOP_ID', getenv('YOOKASSA_SHOP_ID') ?: '');
+define('YOOKASSA_SECRET_KEY', getenv('YOOKASSA_SECRET_KEY') ?: '');
 define('YOOKASSA_API_URL', 'https://api.yookassa.ru/v3/payments');
 define('YOOKASSA_REFUND_URL', 'https://api.yookassa.ru/v3/refunds');
-define('PAYMENT_LIVE_MODE', false);
+define('PAYMENT_LIVE_MODE', (bool)(getenv('PAYMENT_LIVE_MODE') === 'true'));
 
-define('PLAN_MONTHLY_PRICE', 299.00);
-define('PLAN_YEARLY_PRICE', 2990.00);
+define('PLAN_MONTHLY_PRICE', (float)(getenv('PLAN_MONTHLY_PRICE') ?: 299.00));
+define('PLAN_YEARLY_PRICE', (float)(getenv('PLAN_YEARLY_PRICE') ?: 2990.00));
 
 define('MAX_RENEW_ATTEMPTS', 3);
 define('RENEW_NOTIFY_DAYS', 3);
 define('REFUND_WINDOW_DAYS', 14);
 
+if (PAYMENT_LIVE_MODE && (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY)) {
+    error_log('ERROR: Payment live mode enabled but credentials not set!');
+}
+
+// ============================================================
+//  ADMIN EMAILS (из переменных окружения)
+// ============================================================
+$__admin_emails = getenv('ADMIN_EMAILS') ?: '';
+define('ADMIN_EMAILS', array_map('trim', array_filter(explode(',', $__admin_emails))));
+
 // ============================================================
 //  ПОЧТА
 // ============================================================
-define('MAIL_FROM', 'no-reply@cookai.ru');
+define('MAIL_FROM', getenv('MAIL_FROM') ?: 'no-reply@cookai.ru');
 define('MAIL_FROM_NAME', 'CookAI');
 
 // ============================================================
 //  АВТОПОДКЛЮЧЕНИЕ СЛОЁВ
 // ============================================================
 require_once ROOT_DIR . '/includes/db.php';
-require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/includes/functions.php';
 require_once ROOT_DIR . '/includes/auth.php';
 
 // ============================================================

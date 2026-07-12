@@ -9,7 +9,7 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 <section class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
     <div class="bg-white rounded-3xl shadow-md p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6" data-aos="fade-up">
-        <img src="<?= e($u['avatar_url'] ?: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200') ?>" class="w-24 h-24 rounded-full object-cover ring-4 ring-amber-100">
+        <img src="<?= e($u['avatar_url'] ?: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200') ?>" class="w-24 h-24 rounded-full object-cover ring-4 ring-amber-100" alt="Аватар">
         <div class="text-center sm:text-left flex-1">
             <h1 class="text-2xl font-extrabold text-gray-800"><?= e($u['name']) ?></h1>
             <p class="text-gray-400 text-sm"><?= e($u['email']) ?></p>
