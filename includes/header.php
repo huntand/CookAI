@@ -92,7 +92,7 @@ function maintenanceBanner(minutesLeft, startsFull) {
         <div class="hidden lg:flex items-center gap-1">
             <div class="relative" @mouseenter="menu='ai'" @mouseleave="menu=null">
                 <button class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-violet-600 hover:bg-violet-50 transition">
-                    <?= t('Инструменты') ?> ▾
+                    Инструменты ▾
                 </button>
                 <div x-show="menu==='ai'" x-transition class="absolute left-0 mt-1 w-56 bg-white rounded-2xl shadow-lg border border-gray-100 p-2" style="display:none">
                     <a href="<?= url('ai-generator') ?>" class="block px-3 py-2 rounded-lg text-sm hover:bg-violet-50">✨ Генератор рецептов</a>
@@ -104,7 +104,7 @@ function maintenanceBanner(minutesLeft, startsFull) {
             </div>
             <div class="relative" @mouseenter="menu='com'" @mouseleave="menu=null">
                 <button class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-amber-600 hover:bg-amber-50 transition">
-                    <?= t('Сообщества') ?> ▾
+                    Сообщества ▾
                 </button>
                 <div x-show="menu==='com'" x-transition class="absolute left-0 mt-1 w-52 bg-white rounded-2xl shadow-lg border border-gray-100 p-2" style="display:none">
                     <a href="<?= url('communities') ?>" class="block px-3 py-2 rounded-lg text-sm hover:bg-amber-50">👥 Сообщества</a>
@@ -113,7 +113,7 @@ function maintenanceBanner(minutesLeft, startsFull) {
                 </div>
             </div>
             <a href="<?= url('inspiration') ?>" class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-rose-500 hover:bg-rose-50 transition">Вдохновение</a>
-            <a href="<?= url('search') ?>" class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-amber-600 hover:bg-amber-50 transition"><?= t('Поиск') ?></a>
+            <a href="<?= url('search') ?>" class="px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:text-amber-600 hover:bg-amber-50 transition">🔍 Поиск</a>
         </div>
 
         <!-- Right -->
@@ -149,16 +149,16 @@ function notifBell() {
             <?php if ($__user): ?>
                 <a href="<?= url('create-recipe') ?>" class="hidden sm:inline-flex px-3 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-200 to-orange-200 text-amber-800 hover:shadow-md transition">+ Рецепт</a>
                 <a href="<?= url('profile') ?>" class="flex items-center gap-2">
-                    <img src="<?= e($__user['avatar_url'] ?: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80') ?>" class="w-9 h-9 rounded-full object-cover ring-2 ring-amber-200">
+                    <img src="<?= e($__user['avatar_url'] ?: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80') ?>" class="w-9 h-9 rounded-full object-cover ring-2 ring-amber-200" alt="Профиль">
                 </a>
             <?php else: ?>
-                <a href="<?= url('login') ?>" class="px-4 py-2 rounded-xl text-sm font-semibold text-amber-700 hover:bg-amber-50 transition"><?= t('login') ?></a>
-                <a href="<?= url('register') ?>" class="hidden sm:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-200 to-orange-200 text-amber-800 hover:shadow-md transition"><?= t('register') ?></a>
+                <a href="<?= url('login') ?>" class="px-4 py-2 rounded-xl text-sm font-semibold text-amber-700 hover:bg-amber-50 transition">Войти</a>
+                <a href="<?= url('register') ?>" class="hidden sm:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-200 to-orange-200 text-amber-800 hover:shadow-md transition">Регистрация</a>
             <?php endif; ?>
 
             <!-- Mobile burger -->
             <button @click="open=!open" class="lg:hidden p-2 rounded-lg hover:bg-amber-50">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-700"><path x-show="!open" d="M4 6h16M4 12h16M4 18h16"/><path x-show="open" d="M6 6l12 12M6 18L18 6" style="display:none"/></svg>
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-700"><path x-show="!open" d="M4 6h16M4 12h16M4 18h16"/><path x-show="open" d="M6 6l12 12M6 18L18 6"/></svg>
             </button>
         </div>
     </nav>
@@ -170,7 +170,7 @@ function notifBell() {
         <a href="<?= url('advisor') ?>" class="block px-3 py-2 rounded-lg hover:bg-violet-50">🧑‍🍳 Советник</a>
         <a href="<?= url('communities') ?>" class="block px-3 py-2 rounded-lg hover:bg-amber-50">👥 Сообщества</a>
         <a href="<?= url('challenges') ?>" class="block px-3 py-2 rounded-lg hover:bg-amber-50">🏆 Челленджи</a>
-        <a href="<?= url('search') ?>" class="block px-3 py-2 rounded-lg hover:bg-amber-50">🔍 <?= t('search') ?></a>
+        <a href="<?= url('search') ?>" class="block px-3 py-2 rounded-lg hover:bg-amber-50">🔍 Поиск</a>
     </div>
 </header>
 
