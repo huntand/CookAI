@@ -1,14 +1,25 @@
 <?php
 /**
  * CookAI — клиент Yandex AI Studio (YandexGPT)
+ * Константы загружаются из config.php
  */
 declare(strict_types=1);
-require_once __DIR__ . '/../config/yandex_ai.php';
 
 function yandex_gpt_raw(array $messages, float $temperature = 0.6, int $maxTokens = 2000): string
 {
+    // Проверяем обязательные константы
+    if (!defined('YANDEX_API_KEY') || !YANDEX_API_KEY) {
+        throw new RuntimeException('YANDEX_API_KEY not configured');
+    }
+    if (!defined('YANDEX_FOLDER_ID') || !YANDEX_FOLDER_ID) {
+        throw new RuntimeException('YANDEX_FOLDER_ID not configured');
+    }
+    if (!defined('YANDEX_COMPLETION_URL') || !YANDEX_COMPLETION_URL) {
+        throw new RuntimeException('YANDEX_COMPLETION_URL not configured');
+    }
+
     $body = [
-        'modelUri' => 'gpt://' . YANDEX_FOLDER_ID . '/' . YANDEX_GPT_MODEL,
+        'modelUri' => 'gpt://' . YANDEX_FOLDER_ID . '/yandexgpt/latest',
         'completionOptions' => [
             'stream'      => false,
             'temperature' => $temperature,
@@ -17,7 +28,7 @@ function yandex_gpt_raw(array $messages, float $temperature = 0.6, int $maxToken
         'messages' => $messages,
     ];
 
-    $ch = curl_init(YANDEX_GPT_URL);
+    $ch = curl_init(YANDEX_COMPLETION_URL);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
@@ -38,12 +49,16 @@ function yandex_gpt_raw(array $messages, float $temperature = 0.6, int $maxToken
         throw new RuntimeException('Ошибка соединения с Yandex AI: ' . $curlErr);
     }
     if ($httpCode >= 400) {
-        $msg = json_decode($response, true)['error']['message'] ?? $response;
+        $decoded = json_decode($response, true);
+        $msg = $decoded['error']['message'] ?? $decoded['message'] ?? $response;
         throw new RuntimeException('Yandex AI вернул ошибку (' . $httpCode . '): ' . $msg);
     }
 
     $decoded = json_decode($response, true);
-    return $decoded['result']['alternatives'][0]['message']['text'] ?? '';
+    if (!$decoded || !isset($decoded['result']['alternatives'][0]['message']['text'])) {
+        throw new RuntimeException('Некорректный ответ от Yandex AI: ' . substr($response, 0, 200));
+    }
+    return $decoded['result']['alternatives'][0]['message']['text'];
 }
 
 function yandex_gpt_text(string $systemPrompt, array $history, float $temperature = 0.6): string
@@ -90,5 +105,97 @@ function yandex_gpt_json(string $prompt, string $schemaHint, int $retries = 1): 
         $messages[] = ['role' => 'assistant', 'text' => $raw];
         $messages[] = ['role' => 'user', 'text' => 'Верни ТОЛЬКО валидный JSON строго по схеме, без пояснений и markdown.'];
     }
-    throw new RuntimeException('Модель не вернула валидный JSON.');
+    throw new RuntimeException('Модель не вернула валидный JSON после ' . ($retries + 1) . ' попыток.');
+}
+
+/**
+ * Получить платформу YandexGPT для генерации изображений
+ */
+function yandex_art_generate(string $prompt): string
+{
+    if (!defined('YANDEX_API_KEY') || !YANDEX_API_KEY) {
+        throw new RuntimeException('YANDEX_API_KEY not configured');
+    }
+    if (!defined('YANDEX_FOLDER_ID') || !YANDEX_FOLDER_ID) {
+        throw new RuntimeException('YANDEX_FOLDER_ID not configured');
+    }
+    if (!defined('YANDEX_ART_URL') || !YANDEX_ART_URL) {
+        throw new RuntimeException('YANDEX_ART_URL not configured');
+    }
+
+    $body = [
+        'modelUri' => 'art://' . YANDEX_FOLDER_ID . '/yandex-art/latest',
+        'generationOptions' => [
+            'seed' => random_int(1, 2147483647),
+        ],
+        'messages' => [
+            ['weight' => 1, 'text' => $prompt],
+        ],
+    ];
+
+    $ch = curl_init(YANDEX_ART_URL);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_TIMEOUT        => 120,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Api-Key ' . YANDEX_API_KEY,
+            'x-folder-id: ' . YANDEX_FOLDER_ID,
+        ],
+        CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_UNICODE),
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        throw new RuntimeException('Ошибка соединения с Yandex Art: ' . $curlErr);
+    }
+    if ($httpCode >= 400) {
+        $decoded = json_decode($response, true);
+        $msg = $decoded['error']['message'] ?? $response;
+        throw new RuntimeException('Yandex Art вернул ошибку (' . $httpCode . '): ' . $msg);
+    }
+
+    $decoded = json_decode($response, true);
+    if (!$decoded || !isset($decoded['result']['uuid'])) {
+        throw new RuntimeException('Некорректный ответ от Yandex Art');
+    }
+    return $decoded['result']['uuid'];
+}
+
+/**
+ * Получить статус генерации изображения
+ */
+function yandex_art_status(string $requestId): ?array
+{
+    if (!defined('YANDEX_API_KEY') || !YANDEX_API_KEY) {
+        throw new RuntimeException('YANDEX_API_KEY not configured');
+    }
+    if (!defined('YANDEX_FOLDER_ID') || !YANDEX_FOLDER_ID) {
+        throw new RuntimeException('YANDEX_FOLDER_ID not configured');
+    }
+
+    $url = 'https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync/' . $requestId;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Api-Key ' . YANDEX_API_KEY,
+            'x-folder-id: ' . YANDEX_FOLDER_ID,
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode >= 400) {
+        return null;
+    }
+
+    return json_decode($response, true);
 }
