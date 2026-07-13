@@ -9,10 +9,15 @@
 declare(strict_types=1);
 
 // ============================================================
+//  ЗАГРУЗКА .ENV ФАЙЛА
+// ============================================================
+require_once __DIR__ . '/env-loader.php';
+
+// ============================================================
 //  РЕЖИМ И ОКРУЖЕНИЕ
 // ============================================================
 define('APP_NAME', 'CookAI');
-define('APP_DEBUG', (bool)(getenv('APP_DEBUG') === 'true'));
+define('APP_DEBUG', (bool)(getenv('APP_DEBUG') === 'true' || getenv('APP_DEBUG') === '1'));
 define('APP_ENV', getenv('APP_ENV') ?: 'production');
 define('APP_TIMEZONE', 'Europe/Moscow');
 
@@ -32,7 +37,7 @@ if (APP_DEBUG) {
 // ============================================================
 //  РЕЖИМ ОБСЛУЖИВАНИЯ (maintenance)
 // ============================================================
-define('MAINTENANCE_MODE', (bool)(getenv('MAINTENANCE_MODE') === 'true'));
+define('MAINTENANCE_MODE', (bool)(getenv('MAINTENANCE_MODE') === 'true' || getenv('MAINTENANCE_MODE') === '1'));
 define('MAINTENANCE_RETRY_AFTER', (int)(getenv('MAINTENANCE_RETRY_AFTER') ?: 3600));
 define('MAINTENANCE_ALLOWED_IPS', array_filter(explode(',', getenv('MAINTENANCE_ALLOWED_IPS') ?: '')));
 define('MAINTENANCE_MESSAGE', getenv('MAINTENANCE_MESSAGE') ?: 'Мы обновляем кухню и скоро вернёмся с новыми возможностями!');
@@ -49,10 +54,13 @@ define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
 define('DB_NAME', getenv('DB_NAME'));
 define('DB_USER', getenv('DB_USER'));
-define('DB_PASS', getenv('DB_PASS'));
+define('DB_PASS', getenv('DB_PASS') ?: '');
 
 if (!DB_NAME || !DB_USER) {
-    die('ERROR: Database credentials not configured. Set DB_NAME, DB_USER, DB_PASS in environment.');
+    die("ERROR: Database credentials not configured.\n"
+        . "Set DB_NAME, DB_USER, DB_PASS in .env file or environment variables.\n"
+        . "DB_HOST={$_ENV['DB_HOST']}, DB_PORT={$_ENV['DB_PORT']}, "
+        . "DB_NAME=" . (DB_NAME ?: 'NOT SET') . ", DB_USER=" . (DB_USER ?: 'NOT SET'));
 }
 
 // ============================================================
@@ -70,7 +78,7 @@ define('UPLOADS_DIR', ROOT_DIR . '/uploads');
 define('SESSION_NAME', 'cookai_sess');
 define('CRON_SECRET', getenv('CRON_SECRET') ?: '');
 
-if (!CRON_SECRET) {
+if (!CRON_SECRET && APP_ENV === 'production') {
     error_log('WARNING: CRON_SECRET not set. Cron endpoints will be vulnerable!');
 }
 
@@ -103,7 +111,7 @@ define('YANDEX_VISION_MODEL', 'gpt://' . YANDEX_FOLDER_ID . '/yandex-gpt-vision/
 define('YANDEX_ART_URL', 'https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync');
 define('YANDEX_ART_MODEL', 'art://' . YANDEX_FOLDER_ID . '/yandex-art/latest');
 
-if (!YANDEX_API_KEY || !YANDEX_FOLDER_ID) {
+if ((!YANDEX_API_KEY || !YANDEX_FOLDER_ID) && APP_ENV === 'production') {
     error_log('WARNING: Yandex AI credentials not configured. Set YANDEX_API_KEY, YANDEX_FOLDER_ID.');
 }
 
@@ -126,7 +134,7 @@ define('YOOKASSA_SHOP_ID', getenv('YOOKASSA_SHOP_ID') ?: '');
 define('YOOKASSA_SECRET_KEY', getenv('YOOKASSA_SECRET_KEY') ?: '');
 define('YOOKASSA_API_URL', 'https://api.yookassa.ru/v3/payments');
 define('YOOKASSA_REFUND_URL', 'https://api.yookassa.ru/v3/refunds');
-define('PAYMENT_LIVE_MODE', (bool)(getenv('PAYMENT_LIVE_MODE') === 'true'));
+define('PAYMENT_LIVE_MODE', (bool)(getenv('PAYMENT_LIVE_MODE') === 'true' || getenv('PAYMENT_LIVE_MODE') === '1'));
 
 define('PLAN_MONTHLY_PRICE', (float)(getenv('PLAN_MONTHLY_PRICE') ?: 299.00));
 define('PLAN_YEARLY_PRICE', (float)(getenv('PLAN_YEARLY_PRICE') ?: 2990.00));
